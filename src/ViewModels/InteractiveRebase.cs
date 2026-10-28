@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -281,6 +282,40 @@ namespace SourceGit.ViewModels
             });
         }
 
+        public bool IsSelectedSquash => _squashPlan != null;
+
+        public bool CanAutoStash => !IsSelectedSquash;
+
+        public bool WasRebaseStarted { get; private set; }
+
+        public InteractiveRebase(Repository repo, Models.SelectedCommitSquash plan)
+        {
+            _repo = repo;
+            _squashPlan = plan;
+            _commitDetail = new CommitDetail(repo, null);
+            Current = repo.CurrentBranch;
+            On = plan.On;
+            AutoStash = false;
+
+            var selected = new HashSet<string>(plan.Selected);
+            var ordered = plan.GetReorderedCommits();
+            foreach (var commit in ordered)
+            {
+                var item = new InteractiveRebaseItem(plan.Commits.Count - plan.Commits.IndexOf(commit), commit.Commit, commit.Message);
+                if (selected.Contains(commit.Commit.SHA))
+                    item.Action = Models.InteractiveRebaseAction.Fixup;
+                Items.Add(item);
+            }
+
+            var target = Items[^1];
+            target.Action = Models.InteractiveRebaseAction.Reword;
+            target.FullMessage = string.Join("\n\n\n", plan.Commits.AsEnumerable().Reverse()
+                .Where(x => selected.Contains(x.Commit.SHA)).Select(x => x.Message).Distinct());
+            target.IsMessageUserEdited = true;
+            UpdateItems();
+            PreSelected = target;
+        }
+
         public void SelectCommits(List<InteractiveRebaseItem> items)
         {
             if (items.Count == 0)
@@ -354,11 +389,54 @@ namespace SourceGit.ViewModels
 
         public async Task<bool> Start()
         {
+            if (_squashPlan == null)
+                return await StartCoreAsync();
+            if (_isStarting)
+                return false;
+
+            _isStarting = true;
+            try
+            {
+                // A separate lease protects the shared editor job file, including
+                // when another SourceGit process opens a preview for this worktree.
+                using var lease = new FileStream(Path.Combine(_repo.GitDir, "sourcegit.selected_squash.lock"),
+                    FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+                return await StartCoreAsync();
+            }
+            catch (Exception ex)
+            {
+                _repo.SendNotification(ex.Message, true);
+                return false;
+            }
+            finally
+            {
+                _isStarting = false;
+            }
+        }
+
+        private async Task<bool> StartCoreAsync()
+        {
             using var lockWatcher = _repo.LockWatcher();
+
+            if (_squashPlan != null)
+            {
+                try
+                {
+                    await new Commands.QuerySelectedCommitSquash(_repo.FullPath).ValidateAsync(_squashPlan);
+                    if (Items.Any(x => x.Action == Models.InteractiveRebaseAction.Reword && string.IsNullOrWhiteSpace(x.FullMessage)))
+                        throw new InvalidOperationException("The squashed commit message cannot be empty.");
+                }
+                catch (Exception ex)
+                {
+                    _repo.SendNotification(ex.Message, true);
+                    return false;
+                }
+            }
 
             var saveFile = Path.Combine(_repo.GitDir, "sourcegit.interactive_rebase");
             var collection = new Models.InteractiveRebaseJobCollection();
-            collection.OrigHead = _repo.CurrentBranch.Head;
+            collection.OrigHead = _squashPlan?.Head ?? _repo.CurrentBranch.Head;
+            collection.ExpectedBranch = _squashPlan?.Branch ?? string.Empty;
             collection.Onto = On.SHA;
 
             InteractiveRebaseItem pending = null;
@@ -389,8 +467,22 @@ namespace SourceGit.ViewModels
                 await JsonSerializer.SerializeAsync(stream, collection, JsonCodeGen.Default.InteractiveRebaseJobCollection);
             }
 
+            // Keep the prepared jobs readable by Git's editor but prevent another
+            // SourceGit window/process from replacing them until this run stops.
+            using var jobFileLease = IsSelectedSquash
+                ? new FileStream(saveFile, FileMode.Open, FileAccess.Read, FileShare.Read)
+                : null;
+            if (jobFileLease != null)
+            {
+                var saved = await JsonSerializer.DeserializeAsync(jobFileLease, JsonCodeGen.Default.InteractiveRebaseJobCollection);
+                if (JsonSerializer.Serialize(saved, JsonCodeGen.Default.InteractiveRebaseJobCollection) !=
+                    JsonSerializer.Serialize(collection, JsonCodeGen.Default.InteractiveRebaseJobCollection))
+                    throw new InvalidOperationException("The rebase plan was changed by another operation. Close this preview and try again.");
+            }
+
             var log = _repo.CreateLog("Interactive Rebase");
-            var succ = await new Commands.InteractiveRebase(_repo.FullPath, On.SHA, AutoStash, NoVerify)
+            WasRebaseStarted = true;
+            var succ = await new Commands.InteractiveRebase(_repo.FullPath, On.SHA, AutoStash, NoVerify, IsSelectedSquash)
                 .Use(log)
                 .ExecAsync();
 
@@ -531,6 +623,8 @@ namespace SourceGit.ViewModels
             }
         }
 
+        private bool _isStarting;
+        private readonly Models.SelectedCommitSquash _squashPlan;
         private Repository _repo = null;
         private bool _isLoading = false;
         private InteractiveRebaseItem _preSelected = null;

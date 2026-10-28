@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>disable</Nullable></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/Commands/InteractiveRebase.cs" Link="Production/InteractiveRebaseCommand.cs" />
+    <Compile Include="../../src/Models/SelectedCommitSquash.cs" Link="Production/SelectedCommitSquash.cs" />
+    <Compile Include="../../src/Models/InteractiveRebase.cs" Link="Production/InteractiveRebase.cs" />
+    <Compile Include="../../src/Models/User.cs" Link="Production/User.cs" />
+    <Compile Include="../../src/Commands/QuerySelectedCommitSquash.cs" Link="Production/QuerySelectedCommitSquash.cs" />
+    <Compile Include="../../src/Commands/QuerySingleCommit.cs" Link="Production/QuerySingleCommit.cs" />
+    <Compile Include="../../src/Commands/QueryCommitsForInteractiveRebase.cs" Link="Production/QueryCommitsForInteractiveRebase.cs" />
+  </ItemGroup>
+</Project>

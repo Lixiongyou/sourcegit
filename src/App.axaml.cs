@@ -301,6 +301,17 @@ namespace SourceGit
 
             using var stream = File.OpenRead(jobsFile);
             var collection = JsonSerializer.Deserialize(stream, JsonCodeGen.Default.InteractiveRebaseJobCollection);
+            // Fail closed if HEAD/branch moved after the selected-squash preview
+            // was validated but before Git acquired its rebase state.
+            if (!string.IsNullOrEmpty(collection.ExpectedBranch))
+            {
+                var origHead = File.ReadAllText(Path.Combine(dirInfo.FullName, "orig-head")).Trim();
+                var headName = File.ReadAllText(Path.Combine(dirInfo.FullName, "head-name")).Trim();
+                var onto = File.ReadAllText(Path.Combine(dirInfo.FullName, "onto")).Trim();
+                if (!collection.MatchesRebaseState(origHead, headName, onto))
+                    return true;
+            }
+
             collection.WriteTodoList(file);
             exitCode = 0;
             return true;

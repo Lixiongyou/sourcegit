@@ -41,7 +41,16 @@ namespace SourceGit.Models
     {
         public string OrigHead { get; set; } = string.Empty;
         public string Onto { get; set; } = string.Empty;
+        public string ExpectedBranch { get; set; } = string.Empty;
         public List<InteractiveRebaseJob> Jobs { get; set; } = new List<InteractiveRebaseJob>();
+
+        public bool MatchesRebaseState(string originalHead, string branch, string onto)
+        {
+            return string.IsNullOrEmpty(ExpectedBranch) ||
+                (OrigHead.Equals(originalHead, StringComparison.Ordinal) &&
+                 ExpectedBranch.Equals(branch, StringComparison.Ordinal) &&
+                 Onto.Equals(onto, StringComparison.Ordinal));
+        }
 
         public void WriteTodoList(string todoFile)
         {

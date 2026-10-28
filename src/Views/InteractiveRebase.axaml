@@ -271,9 +271,14 @@
     </Border>
 
     <!-- Options -->
-    <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto" Margin="8,0,8,8">
-      <StackPanel Grid.Column="0" Orientation="Horizontal" ClipToBounds="True">
+    <Grid Grid.Row="3" RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto,Auto" Margin="8,0,8,8">
+      <TextBlock Grid.Row="0" Grid.ColumnSpan="3"
+                 Margin="0,0,0,8" TextWrapping="Wrap"
+                 IsVisible="{Binding IsSelectedSquash}"
+                 Text="{DynamicResource Text.CommitCM.SquashSelected.Warning}"/>
+      <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" ClipToBounds="True">
         <CheckBox Content="{DynamicResource Text.InteractiveRebase.AutoStash}"
+                  IsEnabled="{Binding CanAutoStash}"
                   VerticalAlignment="Center"
                   IsChecked="{Binding AutoStash, Mode=TwoWay}"/>
 
@@ -283,8 +288,8 @@
                   IsChecked="{Binding NoVerify, Mode=TwoWay}"/>
       </StackPanel>
 
-      <Button Grid.Column="1" Classes="flat primary" MinWidth="80" Content="{DynamicResource Text.Start}" Click="OnStartJobs"/>
-      <Button Grid.Column="2" Classes="flat" Margin="8,0,0,0" MinWidth="80" Content="{DynamicResource Text.Cancel}" Click="CloseWindow"/>
+      <Button Grid.Row="1" Grid.Column="1" Classes="flat primary" MinWidth="80" Content="{DynamicResource Text.Start}" Click="OnStartJobs"/>
+      <Button Grid.Row="1" Grid.Column="2" Classes="flat" Margin="8,0,0,0" MinWidth="80" Content="{DynamicResource Text.Cancel}" Click="CloseWindow"/>
     </Grid>
 
     <!-- Progress -->

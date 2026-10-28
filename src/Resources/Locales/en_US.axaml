@@ -179,6 +179,8 @@
   <x:String x:Key="Text.CommitCM.Reset" xml:space="preserve">Reset ${0}$ to ${1}$...</x:String>
   <x:String x:Key="Text.CommitCM.Revert" xml:space="preserve">Revert Commit...</x:String>
   <x:String x:Key="Text.CommitCM.SaveAsPatch" xml:space="preserve">Save as Patch...</x:String>
+  <x:String x:Key="Text.CommitCM.SquashSelected" xml:space="preserve">Squash Selected Commits…</x:String>
+  <x:String x:Key="Text.CommitCM.SquashSelected.Warning" xml:space="preserve">Squash selected commits into the oldest selected commit. Unselected commits stay separate and retain their relative order. Review the plan and message before Start. This rewrites history, including any published commits; coordinate with collaborators before proceeding.</x:String>
   <x:String x:Key="Text.CommitDetail.Changes" xml:space="preserve">CHANGES</x:String>
   <x:String x:Key="Text.CommitDetail.Changes.Count" xml:space="preserve">changed file(s)</x:String>
   <x:String x:Key="Text.CommitDetail.Changes.Search" xml:space="preserve">Search Changes...</x:String>

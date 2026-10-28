@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
@@ -928,6 +929,33 @@ namespace SourceGit.Views
 
             if (!repo.IsBare)
             {
+                var squash = new MenuItem();
+                squash.Header = App.Text("CommitCM.SquashSelected");
+                squash.Icon = this.CreateMenuIcon("Icons.SquashIntoParent");
+                squash.IsEnabled = repo.CurrentBranch is { IsDetachedHead: false } && repo.InProgressContext == null;
+                squash.Click += async (_, e) =>
+                {
+                    e.Handled = true;
+                    if (_isOpeningSelectedSquash)
+                        return;
+                    _isOpeningSelectedSquash = true;
+                    try
+                    {
+                        var plan = await new Commands.QuerySelectedCommitSquash(repo.FullPath)
+                            .GetResultAsync(selected.Select(x => x.SHA));
+                        await this.ShowDialogAsync(new ViewModels.InteractiveRebase(repo, plan));
+                    }
+                    catch (Exception ex)
+                    {
+                        repo.SendNotification(ex.Message, true);
+                    }
+                    finally
+                    {
+                        _isOpeningSelectedSquash = false;
+                    }
+                };
+                menu.Items.Add(squash);
+
                 if (canCherryPick)
                 {
                     var cherryPick = new MenuItem();
@@ -1980,6 +2008,7 @@ namespace SourceGit.Views
                 await this.ShowDialogAsync(new ViewModels.InteractiveRebase(repo, on, prefill));
         }
 
+        private bool _isOpeningSelectedSquash;
         private Models.Branch _currentBranch = null;
         private Models.Bisect _bisect = null;
         private bool _hasSingleRemote = false;

@@ -208,9 +208,6 @@ namespace SourceGit.Views
                 return;
 
             var isFirstTimeHere = !_firstSelectionChangedHandled;
-            if (isFirstTimeHere)
-                _firstSelectionChangedHandled = true;
-
             var selected = ItemListBox.SelectedItems ?? new List<object>();
             var items = new List<ViewModels.InteractiveRebaseItem>();
             foreach (var item in selected)
@@ -220,9 +217,16 @@ namespace SourceGit.Views
             }
 
             vm.SelectCommits(items);
+            if (items.Count > 0)
+                _firstSelectionChangedHandled = true;
 
             if (items.Count == 1 && isFirstTimeHere && items[0].Action == Models.InteractiveRebaseAction.Reword)
-                OpenCommitMessageEditor(items[0]);
+            {
+                if (IsVisible)
+                    OpenCommitMessageEditor(items[0]);
+                else
+                    _pendingMessageEditor = items[0];
+            }
         }
 
         private async void OnRowPointerPressed(object sender, PointerPressedEventArgs e)
@@ -440,12 +444,45 @@ namespace SourceGit.Views
             if (DataContext is not ViewModels.InteractiveRebase vm)
                 return;
 
-            Running.IsVisible = true;
-            Running.IsIndeterminate = true;
-            await vm.Start();
-            Running.IsIndeterminate = false;
-            Running.IsVisible = false;
-            Close();
+            if (_isStarting)
+                return;
+
+            _isStarting = true;
+            if (vm.IsSelectedSquash)
+                IsEnabled = false;
+            try
+            {
+                Running.IsVisible = true;
+                Running.IsIndeterminate = true;
+                await vm.Start();
+            }
+            finally
+            {
+                _isStarting = false;
+                IsEnabled = true;
+                Running.IsIndeterminate = false;
+                Running.IsVisible = false;
+            }
+            if (!vm.IsSelectedSquash || vm.WasRebaseStarted)
+                Close();
+        }
+
+        protected override void OnOpened(EventArgs e)
+        {
+            base.OnOpened(e);
+            if (_pendingMessageEditor != null)
+            {
+                var item = _pendingMessageEditor;
+                _pendingMessageEditor = null;
+                OpenCommitMessageEditor(item);
+            }
+        }
+
+        protected override void OnClosing(WindowClosingEventArgs e)
+        {
+            if (_isStarting && DataContext is ViewModels.InteractiveRebase { IsSelectedSquash: true })
+                e.Cancel = true;
+            base.OnClosing(e);
         }
 
         private void CreateActionMenuItem(MenuFlyout flyout, ViewModels.InteractiveRebaseItem item, Models.InteractiveRebaseAction action, IBrush iconBrush, string desc, string hotkey)
@@ -508,6 +545,8 @@ namespace SourceGit.Views
                 OpenCommitMessageEditor(items[0]);
         }
 
+        private ViewModels.InteractiveRebaseItem _pendingMessageEditor;
+        private bool _isStarting;
         private bool _firstSelectionChangedHandled;
         private readonly DataFormat<string> _dndItemFormat = DataFormat.CreateStringApplicationFormat("sourcegit-dnd-ir-item");
     }
