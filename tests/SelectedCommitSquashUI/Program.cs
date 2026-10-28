@@ -73,7 +73,22 @@ try
         Check(before == Git("show-ref") + Git("reflog", "--format=%H %gs") && Git("status", "--porcelain").Length == 0, "Cancel and repeated preview leave refs/index/worktree unchanged");
     }
 }
-finally { Directory.Delete(path, true); }
+finally
+{
+    // Git object files are read-only on Windows. This is only the owned fixture;
+    // do not traverse reparse points while clearing their read-only attribute.
+    foreach (var file in Directory.EnumerateFiles(path, "*", new EnumerationOptions
+    {
+        RecurseSubdirectories = true,
+        AttributesToSkip = FileAttributes.ReparsePoint,
+    }))
+    {
+        var attributes = File.GetAttributes(file);
+        if ((attributes & FileAttributes.ReadOnly) != 0)
+            File.SetAttributes(file, attributes & ~FileAttributes.ReadOnly);
+    }
+    Directory.Delete(path, true);
+}
 Console.WriteLine("Selected squash UI lifecycle passed.");
 
 void Pump() { using var cancellation = new CancellationTokenSource(250); Dispatcher.UIThread.MainLoop(cancellation.Token); }

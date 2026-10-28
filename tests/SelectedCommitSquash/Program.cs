@@ -16,6 +16,7 @@ if (args.Length == 3 && args[0] == "--message")
 }
 var tests = new (string Name, Func<Task> Run)[]
 {
+    ("owned fixture cleanup handles read-only Git files", ReadOnlyCleanup),
     ("contiguous preparation and full messages", Contiguous),
     ("noncontiguous and reversed selections", Noncontiguous),
     ("preparation does not mutate history or worktree", ReadOnly),
@@ -55,6 +56,16 @@ static async Task Reject(Func<Task> action, string phrase = null)
     try { await action(); }
     catch (InvalidOperationException e) { Check(phrase == null || e.Message.Contains(phrase, StringComparison.OrdinalIgnoreCase), "Unexpected rejection: " + e.Message); return; }
     throw new Exception("Expected rejection");
+}
+static Task ReadOnlyCleanup()
+{
+    var repo = new Repo();
+    var file = Path.Combine(repo.Path, ".git", "read-only-cleanup-test");
+    File.WriteAllText(file, "owned test fixture");
+    File.SetAttributes(file, File.GetAttributes(file) | FileAttributes.ReadOnly);
+    repo.Dispose();
+    Check(!Directory.Exists(repo.Path), "Owned repository containing read-only files was not removed");
+    return Task.CompletedTask;
 }
 static async Task Contiguous()
 {
@@ -281,5 +292,20 @@ sealed class Repo : IDisposable
         foreach (var arg in args) info.ArgumentList.Add(arg);
         using var process = Process.Start(info); var output = process.StandardOutput.ReadToEndAsync(); var error = process.StandardError.ReadToEndAsync(); process.WaitForExit(); return (process.ExitCode, output.Result, error.Result);
     }
-    public void Dispose() => Directory.Delete(Path, true);
+    public void Dispose()
+    {
+        // Git marks object files read-only on Windows. Only touch this fixture's
+        // generated temporary directory, and never traverse reparse points.
+        foreach (var file in Directory.EnumerateFiles(Path, "*", new EnumerationOptions
+        {
+            RecurseSubdirectories = true,
+            AttributesToSkip = FileAttributes.ReparsePoint,
+        }))
+        {
+            var attributes = File.GetAttributes(file);
+            if ((attributes & FileAttributes.ReadOnly) != 0)
+                File.SetAttributes(file, attributes & ~FileAttributes.ReadOnly);
+        }
+        Directory.Delete(Path, true);
+    }
 }
