@@ -136,19 +136,22 @@
                                            UseCompactBranchNames="{Binding Source={x:Static vm:Preferences.Instance}, Path=UseCompactBranchNamesInGraph}"
                                            HasSingleRemote="{Binding $parent[v:Histories].HasSingleRemote}"/>
 
-                    <v:CommitSubjectPresenter Grid.Column="3"
-                                              Height="26"
-                                              FontFamily="{DynamicResource Fonts.Default}"
-                                              FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=DefaultFontSize}"
-                                              CodeFontFamily="{DynamicResource Fonts.Monospace}"
-                                              InlineCodeBackground="{DynamicResource Brush.InlineCode}"
-                                              InlineCodeForeground="{DynamicResource Brush.InlineCodeFG}"
-                                              Foreground="{DynamicResource Brush.FG1}"
-                                              LinkForeground="{DynamicResource Brush.Link}"
-                                              Subject="{Binding Subject}"
-                                              IssueTrackers="{Binding $parent[v:Histories].IssueTrackers}"
-                                              FontWeight="{Binding IsCurrentHead, Converter={x:Static c:BoolConverters.IsBoldToFontWeight}}"
-                                              Opacity="{Binding IsMerged, Converter={x:Static c:BoolConverters.IsMergedToOpacity}}"/>
+                    <v:CommitMessageToolTip Grid.Column="3"
+                                            Background="Transparent"
+                                            History="{Binding $parent[v:Histories].DataContext}">
+                      <v:CommitSubjectPresenter Height="26"
+                                                FontFamily="{DynamicResource Fonts.Default}"
+                                                FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=DefaultFontSize}"
+                                                CodeFontFamily="{DynamicResource Fonts.Monospace}"
+                                                InlineCodeBackground="{DynamicResource Brush.InlineCode}"
+                                                InlineCodeForeground="{DynamicResource Brush.InlineCodeFG}"
+                                                Foreground="{DynamicResource Brush.FG1}"
+                                                LinkForeground="{DynamicResource Brush.Link}"
+                                                Subject="{Binding Subject}"
+                                                IssueTrackers="{Binding $parent[v:Histories].IssueTrackers}"
+                                                FontWeight="{Binding IsCurrentHead, Converter={x:Static c:BoolConverters.IsBoldToFontWeight}}"
+                                                Opacity="{Binding IsMerged, Converter={x:Static c:BoolConverters.IsMergedToOpacity}}"/>
+                    </v:CommitMessageToolTip>
                   </Grid>
                 </Border>
               </DataTemplate>
