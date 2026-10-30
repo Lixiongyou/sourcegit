@@ -69,7 +69,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $names = @('SelectedCommitChanges', 'CompactFolders', 'ChangeViewModeMenu', 'SelectedCommitSquash', 'SelectedCommitSquashUI')
+          $names = @('SelectedCommitChanges', 'CompactFolders', 'ChangeViewModeMenu', 'SelectedCommitSquash', 'SelectedCommitSquashUI', 'CommitMessageToolTip')
           $results = @()
           foreach ($name in $names) {
             $project = "tests/$name/$name.csproj"
@@ -88,6 +88,8 @@ jobs:
           }
           $results | Set-Content test-results.txt
           $results | Out-File $env:GITHUB_STEP_SUMMARY -Append
+      - name: Verify source formatting
+        run: dotnet format --verify-no-changes src/SourceGit.csproj
       - name: Build Release
         run: dotnet build -c Release
       - name: Publish upstream NativeAOT Windows x64 Release
